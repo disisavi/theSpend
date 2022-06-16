@@ -1,16 +1,12 @@
-export const verifyToken = "ZZZ";
+export const verifyToken = "XX";
 export const requestLogCollection = "/request-log";
 export const requestMessageCollection =
   (documentId: string) =>
     `${requestLogCollection}/${documentId}/unparsed-message`;
 
-export const messageRecord = (messageText: string): MessageRecord => {
+export const messageRecord = (messageText: string) => {
   return {message: messageText};
 };
-
-interface MessageRecord {
-  message: string,
-}
 
 export interface FunctionResponse {
   message: string,
@@ -64,37 +60,37 @@ export interface Contact {
   wa_id: string;
 }
 
-export interface user {
+export interface User {
   name: string,
   phone: string
 }
-export const usersPresent = [
+export const UserStore = [
   {
-    phoneNumber: "ZZZ",
+    phoneNumber: "XX",
     name: "Abhijeet",
   },
   {
     name: "Sravya",
-    phoneNumber: "ZZZ",
+    phoneNumber: "XX",
   },
 ];
 
-export enum splitStratergy {
+export enum SplitStratergy {
   Both,
   Single
 }
 
-export interface tempSpendObject {
+export interface ParsedMessage {
   amount: number
-  split: splitStratergy,
+  split: SplitStratergy,
   description: string,
 }
 
 
-export interface theSpend {
+export interface TheSpend {
   amount: number
-  spender: user
-  split: splitStratergy,
+  spender: User
+  split: SplitStratergy,
   description: string
   date: Date
   messageRef: string

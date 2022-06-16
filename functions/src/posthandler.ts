@@ -1,7 +1,7 @@
 import {
   FunctionResponse, PostRequest, requestLogCollection,
-  requestMessageCollection, messageRecord, splitStratergy,
-  user, tempSpendObject, theSpend, usersPresent,
+  requestMessageCollection, messageRecord, SplitStratergy,
+  User, ParsedMessage, TheSpend, UserStore,
 }
   from "./entities";
 import {Request} from "firebase-functions/v1";
@@ -23,9 +23,7 @@ const getDateFromEpoch = (time: number) => {
 export async function
 postHandler(postRequest: Request): Promise<FunctionResponse> {
   const FbWebhookMessage: PostRequest = postRequest.body as PostRequest;
-  const user: user = validateAndReturnUser(FbWebhookMessage);
-
-  // functions.logger.info(postRequest.body ?? "asd");
+  const user: User = validateAndReturnUser(FbWebhookMessage);
   const requestRef: Promise<string> = db.writeToCollection(
       requestLogCollection, FbWebhookMessage);
 
@@ -42,11 +40,12 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
     functions.logger.error("Unstructred message.", exception);
     message = "N/A";
   }
+
   functions.logger.info(`Message is == ${message}`);
-  const requestId = await requestRef;
-  const messageRef: string = await db
+  const requestLogId = await requestRef;
+  const messageRef = db
       .writeToCollection(
-          requestMessageCollection(requestId), messageRecord(message));
+          requestMessageCollection(requestLogId), messageRecord(message));
 
 
   const messageTime: number = +FbWebhookMessage
@@ -55,15 +54,16 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
       .value
       .messages[0]
       .timestamp;
+
   const parsedMessage = parseMessage(message);
   functions.logger.debug("parsed message ", parsedMessage);
-  const finalMessage: theSpend = {
+  const finalMessage: TheSpend = {
     amount: parsedMessage.amount,
     spender: user,
     split: parsedMessage.split,
     description: parsedMessage.description,
     date: getDateFromEpoch(messageTime),
-    messageRef: messageRef,
+    messageRef: await messageRef,
   };
 
   db.writeToCollection("/the-spend", finalMessage);
@@ -79,9 +79,9 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
  * @param {string} message: Message as recieved from webhook
  * @return {theSpend}: The spend object
  */
-function parseMessage(message: string): tempSpendObject {
+function parseMessage(message: string): ParsedMessage {
   const sanatizedMessage = message.trim();
-  let split: splitStratergy = splitStratergy.Single;
+  let split: SplitStratergy = SplitStratergy.Single;
   const splitMessage = sanatizedMessage.split(" ");
   let description = "";
   let amount: number = Number.MAX_SAFE_INTEGER;
@@ -89,7 +89,7 @@ function parseMessage(message: string): tempSpendObject {
   for (const token of splitMessage) {
     functions.logger.debug(token);
     if (token.toUpperCase() == "BOTH") {
-      split = splitStratergy.Both;
+      split = SplitStratergy.Both;
     } else if (+token) {
       amount = +token;
     } else {
@@ -113,7 +113,7 @@ function parseMessage(message: string): tempSpendObject {
  * @return {users} the user the message was for
  * It should throw an exception if the user is not one of me or sravya
  */
-function validateAndReturnUser(fbRequest: PostRequest): user {
+function validateAndReturnUser(fbRequest: PostRequest): User {
   const number = fbRequest
       .entry[0]
       .changes[0]
@@ -121,7 +121,7 @@ function validateAndReturnUser(fbRequest: PostRequest): user {
       .messages[0]
       .from;
 
-  const user = usersPresent.find((us) => us.phoneNumber == number);
+  const user = UserStore.find((us) => us.phoneNumber == number);
 
   if (!user) {
     const errorMessage = `Not a valid user.
