@@ -1,21 +1,25 @@
 import {Request} from "firebase-functions";
 import * as functions from "firebase-functions";
-import {FunctionResponse, verifyToken} from "./entities";
+import {FunctionResponse} from "./entities";
+import {authService as authPromise} from "./index";
+import {FBAuthService} from "./authService";
 /**
  * handler for the GET Http method
  * @param {Request} getRequest -- Well, This is the request.
- * @return {FunctionResponse} The FunctionResponse
+ * @return {Promise<FunctionResponse>} The FunctionResponse
  * once the function has been evaluated
  */
-export function getHandler(getRequest:Request):FunctionResponse {
+export async function getHandler(getRequest:Request) {
   functions.logger.info("Inside the get Handler");
   const params = getRequest.query;
   const responseMessage: FunctionResponse = {
     message: "This is an Incorrect request",
     httpStatus: 500,
   };
+
+  const authService = await FBAuthService.getFBAuthService(authPromise);
   if ((params["hub.challenge"] != undefined)&&
-   (params["hub.verify_token"] == verifyToken)) {
+   (params["hub.verify_token"] == authService.getVerifyToken())) {
     responseMessage.message = params["hub.challenge"] as string;
     responseMessage.httpStatus = 200;
   } else {

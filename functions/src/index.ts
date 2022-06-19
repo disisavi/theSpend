@@ -9,9 +9,10 @@ import {FunctionResponse} from "./entities";
 import {postHandler} from "./posthandler";
 import firestore= require("firebase-admin/firestore");
 import admin = require("firebase-admin");
-
+import {FBAuthService} from "./authService";
 
 export const db = firestore.getFirestore(admin.initializeApp());
+export const authService = FBAuthService.initializeAppData();
 
 export const spend = functions
     .region("europe-west1")
@@ -19,7 +20,7 @@ export const spend = functions
       functions.logger.info("Function Triggered", {structuredData: true});
 
       if (request.method == "GET") {
-        const responseMessage:FunctionResponse = getHandler(request);
+        const responseMessage:FunctionResponse = await getHandler(request);
         response.status(responseMessage.httpStatus).
             send(responseMessage.message);
       } else if (request.method == "POST") {
@@ -30,5 +31,3 @@ export const spend = functions
         throw new Error("Not Implemented/Not a valid call to this function.");
       }
     });
-
-

@@ -1,4 +1,3 @@
-export const verifyToken = "XX";
 export const requestLogCollection = "/request-log";
 export const requestMessageCollection =
   (documentId: string) =>
@@ -66,12 +65,12 @@ export interface User {
 }
 export const UserStore = [
   {
-    phoneNumber: "XX",
+    phoneNumber: "4915258718165",
     name: "Abhijeet",
   },
   {
     name: "Sravya",
-    phoneNumber: "XX",
+    phoneNumber: "4915237027263",
   },
 ];
 
