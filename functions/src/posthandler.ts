@@ -1,7 +1,7 @@
 import {
   FunctionResponse, PostRequest, requestLogCollection,
   requestMessageCollection, messageRecord, SplitStratergy,
-  User, ParsedMessage, TheSpend, UserStore,
+  User, ParsedMessage, TheSpend, UserStore, Action, ActionItem,
 }
   from "./entities";
 import {Request} from "firebase-functions/v1";
@@ -47,26 +47,21 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
       .writeToCollection(
           requestMessageCollection(requestLogId), messageRecord(message));
 
+  const parsedMessage = parseMessage(message, user);
 
-  const messageTime: number = +FbWebhookMessage
-      .entry[0]
-      .changes[0]
-      .value
-      .messages[0]
-      .timestamp;
-
-  const parsedMessage = parseMessage(message);
-  functions.logger.debug("parsed message ", parsedMessage);
-  const finalMessage: TheSpend = {
-    amount: parsedMessage.amount,
-    spender: user,
-    split: parsedMessage.split,
-    description: parsedMessage.description,
-    date: getDateFromEpoch(messageTime),
+  const actionItem: ActionItem ={
+    message: parsedMessage,
+    messageObject: FbWebhookMessage
+        .entry[0]
+        .changes[0]
+        .value
+        .messages[0],
     messageRef: await messageRef,
+    action: parsedMessage.action,
   };
+  functions.logger.debug("parsed message ", parsedMessage);
+  messageActionHandler(actionItem);
 
-  db.writeToCollection("/the-spend", finalMessage);
   return {
     message: "Mission Successfull",
     httpStatus: 201,
@@ -77,33 +72,50 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
 /**
  *
  * @param {string} message: Message as recieved from webhook
+ * @param {User} user:the user
  * @return {theSpend}: The spend object
  */
-function parseMessage(message: string): ParsedMessage {
+function parseMessage(message: string, user: User): ParsedMessage {
   const sanatizedMessage = message.trim();
-  let split: SplitStratergy = SplitStratergy.Single;
   const splitMessage = sanatizedMessage.split(" ");
+
+  let split: SplitStratergy = SplitStratergy.Single;
   let description = "";
   let amount: number = Number.MAX_SAFE_INTEGER;
+  let action = Action.SPEND;
+
   functions.logger.debug("Parsing tokens");
-  for (const token of splitMessage) {
-    functions.logger.debug(token);
+  for (let token of splitMessage) {
+    token = token.trim();
+
     if (token.toUpperCase() == "BOTH") {
       split = SplitStratergy.Both;
     } else if (+token) {
       amount = +token;
+    } else if (token.toUpperCase() == "CANCEL") {
+      action = Action.DELETE;
     } else {
       description = `${description} ${token}`;
     }
   }
+
+  if (action == Action.DELETE) {
+    return {
+      action: action,
+      user: user,
+    };
+  }
+
   if (amount == Number.MAX_SAFE_INTEGER) {
     throw new Error("Could not extract amount");
   }
 
   return {
+    action: action,
     amount: amount,
     split: split,
     description: description,
+    user: user,
   };
 }
 
@@ -134,4 +146,57 @@ function validateAndReturnUser(fbRequest: PostRequest): User {
     name: user.name,
     phone: user.phoneNumber,
   };
+}
+
+
+/**
+ *
+ * @param {ActionItem} actionItem:parsed message with message action;
+ */
+function messageActionHandler(actionItem: ActionItem) {
+  if (actionItem.action == Action.DELETE) {
+    findAndDeleteMessage(actionItem);
+  } else if (actionItem.action == Action.SPEND) {
+    persistMessage(actionItem);
+  }
+}
+
+
+/**
+ *
+ * @param {ActionItem}actionItem
+ */
+async function findAndDeleteMessage(actionItem: ActionItem) {
+  const user = actionItem.message.user;
+  const lastMessageRef = db.getLastMessageFromUser(user);
+  const data = (await lastMessageRef).data() as TheSpend;
+
+  functions.logger.info(`The Message from ${data.spender.name} 
+  pertaining to amount ${data.amount} is being deleted`);
+  db.deleteDocument((await lastMessageRef).ref );
+}
+
+/**
+ *
+ * @param {ActionItem} actionItem
+ */
+function persistMessage(actionItem:ActionItem) {
+  const parsedMessage = actionItem.message;
+
+  if (parsedMessage.amount == undefined || parsedMessage.split == undefined ||
+    parsedMessage.user == undefined) {
+    throw new Error("Mandatory feilds not defined for persisting the message");
+  }
+
+  const time = getDateFromEpoch(+actionItem.messageObject.timestamp);
+  const theSpend: TheSpend = {
+    amount: parsedMessage.amount,
+    description: parsedMessage.description,
+    spender: parsedMessage.user,
+    split: parsedMessage.split,
+    date: time,
+    messageRef: actionItem.messageRef,
+  };
+
+  db.writeToCollection("/the-spend", theSpend);
 }

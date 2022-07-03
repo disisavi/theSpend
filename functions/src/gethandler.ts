@@ -2,7 +2,6 @@ import {Request} from "firebase-functions";
 import * as functions from "firebase-functions";
 import {FunctionResponse} from "./entities";
 import {authService as authPromise} from "./index";
-import {FBAuthService} from "./authService";
 /**
  * handler for the GET Http method
  * @param {Request} getRequest -- Well, This is the request.
@@ -17,7 +16,7 @@ export async function getHandler(getRequest:Request) {
     httpStatus: 500,
   };
 
-  const authService = await FBAuthService.getFBAuthService(authPromise);
+  const authService =await authPromise;
   if ((params["hub.challenge"] != undefined)&&
    (params["hub.verify_token"] == authService.getVerifyToken())) {
     responseMessage.message = params["hub.challenge"] as string;

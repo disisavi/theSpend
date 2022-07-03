@@ -80,17 +80,31 @@ export enum SplitStratergy {
 }
 
 export interface ParsedMessage {
-  amount: number
-  split: SplitStratergy,
-  description: string,
+  action: Action
+  amount?: number
+  split?: SplitStratergy,
+  description?: string,
+  user: User,
 }
 
+export enum Action{
+  DELETE,
+  WITHDRAWL,
+  SPEND,
+}
+
+export interface ActionItem{
+message: ParsedMessage,
+messageObject: MessageObject
+action: Action,
+messageRef: string
+}
 
 export interface TheSpend {
   amount: number
   spender: User
   split: SplitStratergy,
-  description: string
+  description?: string
   date: Date
   messageRef: string
 }

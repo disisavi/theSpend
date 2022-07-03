@@ -1,6 +1,7 @@
 import {db} from "./index";
-import {DocumentData} from "firebase-admin/firestore";
-
+import {DocumentData, DocumentReference,
+  QueryDocumentSnapshot} from "firebase-admin/firestore";
+import {User} from "./entities";
 /**
  *
  * @param {string} collectionName
@@ -15,4 +16,27 @@ export function writeToCollection(
       .collection(collectionName)
       .add(data as DocumentData)
       .then((reference)=> reference.id);
+}
+
+/**
+ *
+ * @param {User} user: the user whose last message needs to be deleted
+ * @return {Promise<QueryDocumentSnapshot>}
+ */
+export function getLastMessageFromUser(user: User)
+: Promise<QueryDocumentSnapshot> {
+  return db.collection("/the-spend")
+      .where("spender.name", "==", user.name)
+      .orderBy("date", "desc")
+      .limit(1)
+      .get()
+      .then((querySnapshot) => querySnapshot.docs[0]);
+}
+
+/**
+ *
+ * @param {DocumentReference}documentRef
+ */
+export function deleteDocument(documentRef: DocumentReference) {
+  documentRef.delete();
 }

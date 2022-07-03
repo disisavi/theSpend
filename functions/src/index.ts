@@ -3,6 +3,7 @@
 //  https://firebase.google.com/docs/functions/typescript
 
 
+import {Firestore} from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import {getHandler} from "./gethandler";
 import {FunctionResponse} from "./entities";
@@ -11,7 +12,7 @@ import firestore= require("firebase-admin/firestore");
 import admin = require("firebase-admin");
 import {FBAuthService} from "./authService";
 
-export const db = firestore.getFirestore(admin.initializeApp());
+export const db: Firestore = firestore.getFirestore(admin.initializeApp());
 export const authService = FBAuthService.initializeAppData();
 
 export const spend = functions
