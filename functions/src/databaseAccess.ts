@@ -2,7 +2,6 @@ import {db} from "./index";
 import {DocumentData, DocumentReference,
   QueryDocumentSnapshot} from "firebase-admin/firestore";
 import {User} from "./entities";
-import * as functions from "firebase-functions";
 
 /**
  *
@@ -15,7 +14,6 @@ import * as functions from "firebase-functions";
 export function writeToCollection(
     collectionName: string, data: unknown): Promise<string> {
   (data as any).writeTime = new Date();
-  functions.logger.info(data);
   return db
       .collection(collectionName)
       .add(data as DocumentData)

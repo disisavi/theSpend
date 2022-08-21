@@ -2,6 +2,7 @@ import {FBAuthService} from "./authService";
 import {FBMessageRequest, MessageRequest} from "./entities";
 import * as functions from "firebase-functions";
 import fetch from "node-fetch";
+import {authService} from ".";
 /**
  *f
  */
@@ -12,7 +13,7 @@ export class FBService {
    *constructor
    */
   constructor() {
-    this.fbAuthService = FBAuthService.initializeAppData();
+    this.fbAuthService = authService;
   }
   /**
    *
@@ -39,7 +40,7 @@ export class FBService {
     };
     const url =`https://graph.facebook.com/v13.0/${(await this.fbAuthService).getPhoneNumberId()}/messages`;
     functions.logger.debug(url, header);
-
+    functions.logger.debug("Message to FB is ", fbMessageRequest);
     fetch(url, {
       method: "POST",
       headers: header,
@@ -53,11 +54,11 @@ export class FBService {
             });
             throw new Error("Could not send the message");
           }
-          functions.logger.info("Send the message");
+          functions.logger.info("Messge Sent Successfully");
           response.json().then((message)=> functions.logger.info(message));
         })
         .catch((error)=> {
-          functions.logger.error(error);
+          functions.logger.error("Failed to send message -- ", (error as Error));
         });
   }
 

@@ -30,7 +30,7 @@ export class FBAuthService {
      * @param {AppDataInterface}appData: initialize the class with appdata
      */
   constructor(appData: AppDataInterface) {
-    functions.logger.info("something", appData);
+    functions.logger.info("Initialize FBAuthService with data --", appData);
     this.appId = appData.appId;
     this.appSecret = appData.appSecret;
     this.grantType = appData.grantType;

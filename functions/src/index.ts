@@ -18,7 +18,7 @@ export const authService = FBAuthService.initializeAppData();
 export const spend = functions
     .region("europe-west1")
     .https.onRequest(async (request, response) => {
-      functions.logger.info("Function Triggered", {structuredData: true});
+      functions.logger.info("Function Triggered");
 
       if (request.method == "GET") {
         const responseMessage:FunctionResponse = await getHandler(request);

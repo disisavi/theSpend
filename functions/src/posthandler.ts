@@ -23,13 +23,23 @@ const getDateFromEpoch = (time: number) => {
  */
 export async function
 postHandler(postRequest: Request): Promise<FunctionResponse> {
-  const FbWebhookMessage: PostRequest = postRequest.body as PostRequest;
-
+  let fbWebhookMessage: PostRequest;
   try {
-    const user: User = validateAndReturnUser(FbWebhookMessage);
-    const requestRef: Promise<string> = db.writeToCollection(requestLogCollection, FbWebhookMessage);
+    fbWebhookMessage = validateAndGetWebhookMessage(postRequest.body);
+  } catch (e) {
+    functions.logger.info("Not an amount message-- Skipping", postRequest.body);
+    return {
+      httpStatus: 200,
+      message: "Not processed",
+    };
+  }
 
-    const messageObject = FbWebhookMessage
+  functions.logger.info("Message from FB", fbWebhookMessage);
+  try {
+    const user: User = validateAndReturnUser(fbWebhookMessage);
+    const requestRef: Promise<string> = db.writeToCollection(requestLogCollection, fbWebhookMessage);
+
+    const messageObject = fbWebhookMessage
         .entry[0]
         .changes[0]
         .value
@@ -51,17 +61,19 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
       message: "Mission Successfull",
       httpStatus: 201,
     };
-  } catch (exception) {
+  } catch (e) {
+    const exception = e as Error;
+    functions.logger.error("Failed with error ", exception.message);
     const fbService = new FBService();
     fbService.sendMessage({
-      phoneNumber: FbWebhookMessage
+      phoneNumber: fbWebhookMessage
           .entry[0]
           .changes[0]
           .value
-          .metadata
-          .display_phone_number,
+          .messages[0]
+          .from,
       message: ReplyMessage.FAILED_READ,
-      messageId: FbWebhookMessage
+      messageId: fbWebhookMessage
           .entry[0]
           .changes[0]
           .value
@@ -71,9 +83,26 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
 
     return {
       message: "Mission Not Successfull",
-      httpStatus: 400,
+      httpStatus: 200,
     };
   }
+}
+
+/**
+ *
+ * @param {any}postRequest
+ * @return {PostRequest}
+ */
+function validateAndGetWebhookMessage(postRequest: unknown):PostRequest {
+  const pr = postRequest as PostRequest;
+  pr
+      .entry[0]
+      .changes[0]
+      .value
+      .messages[0]
+      .id;
+
+  return pr;
 }
 
 /**
@@ -204,8 +233,7 @@ async function findAndDeleteMessage(actionItem: ActionItem) {
   const lastMessageRef = db.getLastMessageFromUser(user);
   const data = (await lastMessageRef).data() as TheSpend;
 
-  functions.logger.info(`The Message from ${data.spender.name} 
-  pertaining to amount ${data.amount} is being deleted`);
+  functions.logger.info(`The Message from ${data.spender.name} pertaining to amount ${data.amount} is being deleted`);
   db.deleteDocument((await lastMessageRef).ref );
 }
 
