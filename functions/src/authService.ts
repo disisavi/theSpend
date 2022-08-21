@@ -1,6 +1,6 @@
 import {db} from "./index";
-import fetch from "node-fetch";
 import * as functions from "firebase-functions";
+
 const appDataCollection = "app-data";
 
 interface AppDataInterface {
@@ -8,13 +8,10 @@ interface AppDataInterface {
   appSecret: string,
   grantType: string,
   verifyToken: string
-
+  phoneNumberId:string
+  fbAccessToken: string
 }
 
-interface AuthResponse {
-  access_token: string,
-  token_type: string
-}
 
 /**
  * TODO --> put something meaningfull here
@@ -24,6 +21,8 @@ export class FBAuthService {
   private appSecret: string;
   private grantType: string;
   private verifyToken: string;
+  private fbPhoneNumberID: string;
+  private fbAccessToken: string;
   // private authResponse: Promise<AuthResponse> | null;
   private authUrl = "https://graph.facebook.com/oauth/access_token";
   /**
@@ -36,7 +35,8 @@ export class FBAuthService {
     this.appSecret = appData.appSecret;
     this.grantType = appData.grantType;
     this.verifyToken = appData.verifyToken;
-    // this.authResponse = null;
+    this.fbPhoneNumberID= appData.phoneNumberId;
+    this.fbAccessToken = appData.fbAccessToken;
   }
 
   /**
@@ -50,41 +50,13 @@ export class FBAuthService {
         .then((appdata) => new FBAuthService(appdata));
   }
 
-  /**
-   *
-   * @param {Promise<FBAuthService>} authPromise
-   * @return {Promise<FBAuthService>}
-   */
-  public static async getFBAuthService(
-      authPromise: Promise<FBAuthService>): Promise<FBAuthService> {
-    return await authPromise;
-  }
 
   /**
    *
-   * @return {Promise<AuthResponse>} returns the authentication token
+   * @return {string}
    */
-  public getAuthToken(): Promise<AuthResponse> {
-    const url =
-      `${this.authUrl}/client_id=${this.appId}
-    &client_secret=${this.appSecret}
-    &grant_type=${this.grantType}`;
-
-    const authData = fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-    })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Failed to authenticate");
-          }
-          return response.json();
-        })
-        .then((responseData) => responseData as AuthResponse);
-    // this.authResponse = authData;
-    return authData;
+  public getAuthToken(): string {
+    return this.fbAccessToken;
   }
 
   /**
@@ -93,5 +65,13 @@ export class FBAuthService {
    */
   getVerifyToken() {
     return this.verifyToken;
+  }
+
+  /**
+   *
+   * @return {string}
+   */
+  getPhoneNumberId(): string {
+    return this.fbPhoneNumberID;
   }
 }

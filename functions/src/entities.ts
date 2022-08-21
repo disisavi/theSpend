@@ -80,24 +80,23 @@ export enum SplitStratergy {
 }
 
 export interface ParsedMessage {
-  action: Action
   amount?: number
   split?: SplitStratergy,
   description?: string,
   user: User,
 }
 
-export enum Action{
+export enum Action {
   DELETE,
   WITHDRAWL,
   SPEND,
 }
 
-export interface ActionItem{
-message: ParsedMessage,
-messageObject: MessageObject
-action: Action,
-messageRef: string
+export interface ActionItem {
+  message: ParsedMessage,
+  messageObject: MessageObject
+  action: Action,
+  messageRef: string
 }
 
 export interface TheSpend {
@@ -107,4 +106,28 @@ export interface TheSpend {
   description?: string
   date: Date
   messageRef: string
+}
+
+export enum ReplyMessage {
+  FAILED_READ = "Failed to parse the message",
+}
+
+export interface MessageRequest {
+  phoneNumber: string,
+  messageId: string,
+  message: ReplyMessage
+}
+
+export interface FBMessageRequest{
+  messaging_product: string,
+  recipient_type: string,
+  to: string,
+  context: {
+    message_id: string
+  }
+  type: string,
+  text:{
+    preview_url: boolean,
+    body: string
+  }
 }

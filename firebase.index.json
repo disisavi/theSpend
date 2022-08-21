@@ -1,0 +1,12 @@
+{
+    "indexes": [
+      { 
+      "collectionGroup": "the-spend",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "spender.name", "order": "DESCENDING" },
+          { "fieldPath": "date", "order": "DESCENDING" }
+        ]
+      }
+    ]
+  }

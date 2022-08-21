@@ -1,12 +1,13 @@
 import {
   FunctionResponse, PostRequest, requestLogCollection,
   requestMessageCollection, messageRecord, SplitStratergy,
-  User, ParsedMessage, TheSpend, UserStore, Action, ActionItem,
+  User, ParsedMessage, TheSpend, UserStore, Action, ActionItem, MessageObject, ReplyMessage,
 }
   from "./entities";
 import {Request} from "firebase-functions/v1";
 import * as functions from "firebase-functions";
 import * as db from "./databaseAccess";
+import {FBService} from "./fbService";
 
 const getDateFromEpoch = (time: number) => {
   const date: Date = new Date(0);
@@ -23,59 +24,85 @@ const getDateFromEpoch = (time: number) => {
 export async function
 postHandler(postRequest: Request): Promise<FunctionResponse> {
   const FbWebhookMessage: PostRequest = postRequest.body as PostRequest;
-  const user: User = validateAndReturnUser(FbWebhookMessage);
-  const requestRef: Promise<string> = db.writeToCollection(
-      requestLogCollection, FbWebhookMessage);
 
-  let message: string;
   try {
-    message = FbWebhookMessage
+    const user: User = validateAndReturnUser(FbWebhookMessage);
+    const requestRef: Promise<string> = db.writeToCollection(requestLogCollection, FbWebhookMessage);
+
+    const messageObject = FbWebhookMessage
         .entry[0]
         .changes[0]
         .value
-        .messages[0]
+        .messages[0];
+
+    const message: string = extractMessageString(messageObject);
+
+    functions.logger.info(`Message is == ${message}`);
+
+    const messageRef = db
+        .writeToCollection( requestMessageCollection(await requestRef), messageRecord(message));
+
+    const actionItem = parseMessage(messageObject, user, await messageRef);
+
+    functions.logger.debug("parsed action ", actionItem);
+    messageActionHandler(actionItem);
+
+    return {
+      message: "Mission Successfull",
+      httpStatus: 201,
+    };
+  } catch (exception) {
+    const fbService = new FBService();
+    fbService.sendMessage({
+      phoneNumber: FbWebhookMessage
+          .entry[0]
+          .changes[0]
+          .value
+          .metadata
+          .display_phone_number,
+      message: ReplyMessage.FAILED_READ,
+      messageId: FbWebhookMessage
+          .entry[0]
+          .changes[0]
+          .value
+          .messages[0]
+          .id,
+    });
+
+    return {
+      message: "Mission Not Successfull",
+      httpStatus: 400,
+    };
+  }
+}
+
+/**
+ *
+ * @param {MessageObject} messageObject
+ * @return {string}
+ */
+function extractMessageString(messageObject: MessageObject) {
+  let message: string;
+  try {
+    message = messageObject
         .text
         .body;
   } catch (exception) {
     functions.logger.error("Unstructred message.", exception);
     message = "N/A";
   }
-
-  functions.logger.info(`Message is == ${message}`);
-  const requestLogId = await requestRef;
-  const messageRef = db
-      .writeToCollection(
-          requestMessageCollection(requestLogId), messageRecord(message));
-
-  const parsedMessage = parseMessage(message, user);
-
-  const actionItem: ActionItem ={
-    message: parsedMessage,
-    messageObject: FbWebhookMessage
-        .entry[0]
-        .changes[0]
-        .value
-        .messages[0],
-    messageRef: await messageRef,
-    action: parsedMessage.action,
-  };
-  functions.logger.debug("parsed message ", parsedMessage);
-  messageActionHandler(actionItem);
-
-  return {
-    message: "Mission Successfull",
-    httpStatus: 201,
-  };
+  return message;
 }
-
 
 /**
  *
- * @param {string} message: Message as recieved from webhook
+ * @param {MessageObject} messageObject: Message as recieved from webhook
  * @param {User} user:the user
- * @return {theSpend}: The spend object
+ * @param {string} messageRef: messageRef
+ * @return {ActionItem}: The spend object
  */
-function parseMessage(message: string, user: User): ParsedMessage {
+function parseMessage(messageObject: MessageObject, user: User, messageRef: string): ActionItem {
+  const message = extractMessageString(messageObject);
   const sanatizedMessage = message.trim();
   const splitMessage = sanatizedMessage.split(" ");
 
@@ -83,6 +110,7 @@ function parseMessage(message: string, user: User): ParsedMessage {
   let description = "";
   let amount: number = Number.MAX_SAFE_INTEGER;
   let action = Action.SPEND;
+  let parsedMessage: ParsedMessage;
 
   functions.logger.debug("Parsing tokens");
   for (let token of splitMessage) {
@@ -100,8 +128,14 @@ function parseMessage(message: string, user: User): ParsedMessage {
   }
 
   if (action == Action.DELETE) {
-    return {
-      action: action,
+    parsedMessage = {
+      user: user,
+    };
+  } else {
+    parsedMessage = {
+      amount: amount,
+      split: split,
+      description: description,
       user: user,
     };
   }
@@ -111,11 +145,10 @@ function parseMessage(message: string, user: User): ParsedMessage {
   }
 
   return {
+    message: parsedMessage,
     action: action,
-    amount: amount,
-    split: split,
-    description: description,
-    user: user,
+    messageObject: messageObject,
+    messageRef: messageRef,
   };
 }
 
