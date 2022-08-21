@@ -23,6 +23,8 @@ const getDateFromEpoch = (time: number) => {
  */
 export async function
 postHandler(postRequest: Request): Promise<FunctionResponse> {
+  const fbService = new FBService();
+
   let fbWebhookMessage: PostRequest;
   try {
     fbWebhookMessage = validateAndGetWebhookMessage(postRequest.body);
@@ -51,7 +53,7 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
 
     const messageRef = db
         .writeToCollection( requestMessageCollection(await requestRef), messageRecord(message));
-
+    fbService.makrMessageAsRead(messageObject.id);
     const actionItem = parseMessage(messageObject, user, await messageRef);
 
     functions.logger.debug("parsed action ", actionItem);
@@ -64,7 +66,6 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
   } catch (e) {
     const exception = e as Error;
     functions.logger.error("Failed with error ", exception.message);
-    const fbService = new FBService();
     fbService.sendMessage({
       phoneNumber: fbWebhookMessage
           .entry[0]

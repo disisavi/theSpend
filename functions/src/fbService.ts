@@ -8,12 +8,53 @@ import {authService} from ".";
  */
 export class FBService {
   private fbAuthService:Promise<FBAuthService>;
+  private fbURL = "https://graph.facebook.com/v14.0";
+  private messageEndPoint?: string;
 
   /**
    *constructor
    */
   constructor() {
     this.fbAuthService = authService;
+  }
+
+
+  /**
+   *
+   * @param {string} messageId
+   */
+  public async makrMessageAsRead(messageId: string) {
+    const requestData = {
+      messaging_product: "whatsapp",
+      status: "read",
+      message_id: messageId,
+    };
+    const header = {
+      "Accept": "application/json",
+      "Authorization": await this.getBearerToken(),
+      "Content-Type": "application/json",
+    };
+
+    fetch( await this.getMessagesURL(),
+        {
+          method: "POST",
+          headers: header,
+          body: JSON.stringify(requestData),
+        })
+        .then((response)=> {
+          if (response.status != 200) {
+            response.json().then((message)=> {
+              functions.logger.error("Failed to send reciept");
+              functions.logger.error(message);
+            });
+            throw new Error("Could not send the reciept");
+          }
+          functions.logger.info("Reciept Sent Successfully");
+          response.json().then((message)=> functions.logger.info(message));
+        })
+        .catch((error)=> {
+          functions.logger.error("Failed to send reciept -- ", (error as Error));
+        });
   }
   /**
    *
@@ -38,7 +79,7 @@ export class FBService {
       "Authorization": await this.getBearerToken(),
       "Content-Type": "application/json",
     };
-    const url =`https://graph.facebook.com/v13.0/${(await this.fbAuthService).getPhoneNumberId()}/messages`;
+    const url = await this.getMessagesURL();
     functions.logger.debug(url, header);
     functions.logger.debug("Message to FB is ", fbMessageRequest);
     fetch(url, {
@@ -69,5 +110,16 @@ export class FBService {
   private async getBearerToken():Promise<string> {
     return this.fbAuthService
         .then((authService)=> `Bearer ${authService.getAuthToken()}`);
+  }
+
+  /**
+   *
+   * @return {String}
+   */
+  private async getMessagesURL() {
+    if (this.messageEndPoint == null) {
+      this.messageEndPoint = `${this.fbURL}/${(await this.fbAuthService).getPhoneNumberId()}/messages`;
+    }
+    return this.messageEndPoint;
   }
 }
