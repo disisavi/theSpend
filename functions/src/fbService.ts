@@ -43,14 +43,11 @@ export class FBService {
         })
         .then((response)=> {
           if (response.status != 200) {
-            response.json().then((message)=> {
-              functions.logger.error("Failed to send reciept");
-              functions.logger.error(message);
-            });
-            throw new Error("Could not send the reciept");
+            functions.logger.error("Failed to send reciept");
+          } else {
+            functions.logger.info("Reciept Sent Successfully");
           }
-          functions.logger.info("Reciept Sent Successfully");
-          response.json().then((message)=> functions.logger.info(message));
+          response.json().then((message)=> functions.logger.debug(message));
         })
         .catch((error)=> {
           functions.logger.error("Failed to send reciept -- ", (error as Error));

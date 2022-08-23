@@ -1,7 +1,7 @@
 import {
   FunctionResponse, PostRequest, requestLogCollection,
   requestMessageCollection, messageRecord, SplitStratergy,
-  User, ParsedMessage, TheSpend, UserStore, Action, ActionItem, MessageObject, ReplyMessage,
+  User, ParsedMessage, TheSpend, UserStore, Action, ActionItem, MessageObject,
 }
   from "./entities";
 import {Request} from "firebase-functions/v1";
@@ -51,14 +51,18 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
 
     functions.logger.info(`Message is == ${message}`);
 
-    const messageRef = db
-        .writeToCollection( requestMessageCollection(await requestRef), messageRecord(message));
+    db.writeToCollection( requestMessageCollection(await requestRef), messageRecord(message));
     fbService.makrMessageAsRead(messageObject.id);
-    const actionItem = parseMessage(messageObject, user, await messageRef);
+
+    const actionItem = parseMessage(messageObject, user, await requestRef);
 
     functions.logger.debug("parsed action ", actionItem);
-    messageActionHandler(actionItem);
-
+    const successMessage = await messageActionHandler(actionItem);
+    fbService.sendMessage({
+      phoneNumber: messageObject.from,
+      message: successMessage,
+      messageId: messageObject.id,
+    });
     return {
       message: "Mission Successfull",
       httpStatus: 201,
@@ -73,7 +77,7 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
           .value
           .messages[0]
           .from,
-      message: ReplyMessage.FAILED_READ,
+      message: "Failed to parse the message "+ exception.message,
       messageId: fbWebhookMessage
           .entry[0]
           .changes[0]
@@ -148,6 +152,8 @@ function parseMessage(messageObject: MessageObject, user: User, messageRef: stri
 
     if (token.toUpperCase() == "BOTH") {
       split = SplitStratergy.Both;
+    } else if (token.toLowerCase() == "WITHDRAW") {
+      action = Action.WITHDRAWL;
     } else if (+token) {
       amount = +token;
     } else if (token.toUpperCase() == "CANCEL") {
@@ -168,10 +174,10 @@ function parseMessage(messageObject: MessageObject, user: User, messageRef: stri
       description: description,
       user: user,
     };
-  }
 
-  if (amount == Number.MAX_SAFE_INTEGER) {
-    throw new Error("Could not extract amount");
+    if (amount == Number.MAX_SAFE_INTEGER) {
+      throw new Error("Could not extract amount");
+    }
   }
 
   return {
@@ -215,34 +221,47 @@ function validateAndReturnUser(fbRequest: PostRequest): User {
 /**
  *
  * @param {ActionItem} actionItem:parsed message with message action;
+ * @return {String}
  */
-function messageActionHandler(actionItem: ActionItem) {
+async function messageActionHandler(actionItem: ActionItem): Promise<string> {
+  let returnMessage = "No Action Taken";
   if (actionItem.action == Action.DELETE) {
-    findAndDeleteMessage(actionItem);
+    returnMessage = await findAndDeleteMessage(actionItem);
   } else if (actionItem.action == Action.SPEND) {
-    persistMessage(actionItem);
+    returnMessage = persistMessage(actionItem);
   }
+  return returnMessage;
 }
 
 
 /**
  *
  * @param {ActionItem}actionItem
+ * @return {Promise<string>}
  */
-async function findAndDeleteMessage(actionItem: ActionItem) {
+async function findAndDeleteMessage(actionItem: ActionItem):Promise<string> {
   const user = actionItem.message.user;
   const lastMessageRef = db.getLastMessageFromUser(user);
   const data = (await lastMessageRef).data() as TheSpend;
 
   functions.logger.info(`The Message from ${data.spender.name} pertaining to amount ${data.amount} is being deleted`);
   db.deleteDocument((await lastMessageRef).ref );
+  const a = `Deleted the following message -- ${JSON.stringify({
+    amount: data.amount,
+    description: data.description,
+    date: data.date,
+    spender: JSON.stringify(data.spender),
+  })}`;
+  functions.logger.info("AAAAAAAAAAAAAAA", a);
+  return a;
 }
 
 /**
  *
  * @param {ActionItem} actionItem
+ * @return {String}
  */
-function persistMessage(actionItem:ActionItem) {
+function persistMessage(actionItem:ActionItem):string {
   const parsedMessage = actionItem.message;
 
   if (parsedMessage.amount == undefined || parsedMessage.split == undefined ||
@@ -261,4 +280,10 @@ function persistMessage(actionItem:ActionItem) {
   };
 
   db.writeToCollection("/the-spend", theSpend);
+
+  let returnMessage = `Recorded an expense of ${actionItem.message.amount} `;
+  if (actionItem.message.split == SplitStratergy.Both) {
+    returnMessage += "for Both";
+  } else returnMessage += "for you";
+  return returnMessage;
 }

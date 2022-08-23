@@ -108,14 +108,11 @@ export interface TheSpend {
   messageRef: string
 }
 
-export enum ReplyMessage {
-  FAILED_READ = "Failed to parse the message",
-}
 
 export interface MessageRequest {
   phoneNumber: string,
   messageId: string,
-  message: ReplyMessage
+  message: string
 }
 
 export interface FBMessageRequest{
