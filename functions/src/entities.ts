@@ -4,7 +4,7 @@ export const requestMessageCollection =
     `${requestLogCollection}/${documentId}/unparsed-message`;
 
 export const messageRecord = (messageText: string) => {
-  return {message: messageText};
+  return { message: messageText };
 };
 
 export interface FunctionResponse {
@@ -115,7 +115,7 @@ export interface MessageRequest {
   message: string
 }
 
-export interface FBMessageRequest{
+export interface FBMessageRequest {
   messaging_product: string,
   recipient_type: string,
   to: string,
@@ -123,7 +123,7 @@ export interface FBMessageRequest{
     message_id: string
   }
   type: string,
-  text:{
+  text: {
     preview_url: boolean,
     body: string
   }

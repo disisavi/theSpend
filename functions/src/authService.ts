@@ -1,4 +1,4 @@
-import {db} from "./index";
+import { db } from "./index";
 import * as functions from "firebase-functions";
 
 const appDataCollection = "app-data";
@@ -8,7 +8,7 @@ interface AppDataInterface {
   appSecret: string,
   grantType: string,
   verifyToken: string
-  phoneNumberId:string
+  phoneNumberId: string
   fbAccessToken: string
 }
 
@@ -35,7 +35,7 @@ export class FBAuthService {
     this.appSecret = appData.appSecret;
     this.grantType = appData.grantType;
     this.verifyToken = appData.verifyToken;
-    this.fbPhoneNumberID= appData.phoneNumberId;
+    this.fbPhoneNumberID = appData.phoneNumberId;
     this.fbAccessToken = appData.fbAccessToken;
   }
 
@@ -45,9 +45,9 @@ export class FBAuthService {
      */
   public static initializeAppData(): Promise<FBAuthService> {
     return db.collection(appDataCollection)
-        .doc("fb-data").get()
-        .then((document) => document.data() as AppDataInterface)
-        .then((appdata) => new FBAuthService(appdata));
+      .doc("fb-data").get()
+      .then((document) => document.data() as AppDataInterface)
+      .then((appdata) => new FBAuthService(appdata));
   }
 
 

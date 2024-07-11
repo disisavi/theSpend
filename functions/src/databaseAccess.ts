@@ -1,7 +1,9 @@
-import {db} from "./index";
-import {DocumentData, DocumentReference,
-  QueryDocumentSnapshot} from "firebase-admin/firestore";
-import {User} from "./entities";
+import { db } from "./index";
+import {
+  DocumentData, DocumentReference,
+  QueryDocumentSnapshot
+} from "firebase-admin/firestore";
+import { User } from "./entities";
 
 /**
  *
@@ -12,12 +14,12 @@ import {User} from "./entities";
  * @return {Promise<string>} Returns the ID of the doc
  */
 export function writeToCollection(
-    collectionName: string, data: unknown): Promise<string> {
+  collectionName: string, data: unknown): Promise<string> {
   (data as any).writeTime = new Date();
   return db
-      .collection(collectionName)
-      .add(data as DocumentData)
-      .then((reference)=> reference.id);
+    .collection(collectionName)
+    .add(data as DocumentData)
+    .then((reference) => reference.id);
 }
 
 /**
@@ -27,11 +29,11 @@ export function writeToCollection(
  */
 export function getLastMessageFromUser(user: User): Promise<QueryDocumentSnapshot> {
   return db.collection("/the-spend")
-      .where("spender.name", "==", user.name)
-      .orderBy("date", "desc")
-      .limit(1)
-      .get()
-      .then((querySnapshot) => querySnapshot.docs[0]);
+    .where("spender.name", "==", user.name)
+    .orderBy("date", "desc")
+    .limit(1)
+    .get()
+    .then((querySnapshot) => querySnapshot.docs[0]);
 }
 
 /**

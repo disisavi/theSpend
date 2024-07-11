@@ -4,10 +4,10 @@ import {
   User, ParsedMessage, TheSpend, UserStore, Action, ActionItem, MessageObject,
 }
   from "./entities";
-import {Request} from "firebase-functions/v1";
+import { Request } from "firebase-functions/v1";
 import * as functions from "firebase-functions";
 import * as db from "./databaseAccess";
-import {FBService} from "./fbService";
+import { FBService } from "./fbService";
 
 const getDateFromEpoch = (time: number) => {
   const date: Date = new Date(0);
@@ -22,7 +22,7 @@ const getDateFromEpoch = (time: number) => {
  * @return {FunctionResponse}: Response to this request
  */
 export async function
-postHandler(postRequest: Request): Promise<FunctionResponse> {
+  postHandler(postRequest: Request): Promise<FunctionResponse> {
   const fbService = new FBService();
 
   let fbWebhookMessage: PostRequest;
@@ -42,16 +42,16 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
     const requestRef: Promise<string> = db.writeToCollection(requestLogCollection, fbWebhookMessage);
 
     const messageObject = fbWebhookMessage
-        .entry[0]
-        .changes[0]
-        .value
-        .messages[0];
+      .entry[0]
+      .changes[0]
+      .value
+      .messages[0];
 
     const message: string = extractMessageString(messageObject);
 
     functions.logger.info(`Message is == ${message}`);
 
-    db.writeToCollection( requestMessageCollection(await requestRef), messageRecord(message));
+    db.writeToCollection(requestMessageCollection(await requestRef), messageRecord(message));
     fbService.makrMessageAsRead(messageObject.id);
 
     const actionItem = parseMessage(messageObject, user, await requestRef);
@@ -72,18 +72,18 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
     functions.logger.error("Failed with error ", exception.message);
     fbService.sendMessage({
       phoneNumber: fbWebhookMessage
-          .entry[0]
-          .changes[0]
-          .value
-          .messages[0]
-          .from,
-      message: "Failed to parse the message "+ exception.message,
+        .entry[0]
+        .changes[0]
+        .value
+        .messages[0]
+        .from,
+      message: "Failed to parse the message " + exception.message,
       messageId: fbWebhookMessage
-          .entry[0]
-          .changes[0]
-          .value
-          .messages[0]
-          .id,
+        .entry[0]
+        .changes[0]
+        .value
+        .messages[0]
+        .id,
     });
 
     return {
@@ -98,14 +98,14 @@ postHandler(postRequest: Request): Promise<FunctionResponse> {
  * @param {any}postRequest
  * @return {PostRequest}
  */
-function validateAndGetWebhookMessage(postRequest: unknown):PostRequest {
+function validateAndGetWebhookMessage(postRequest: unknown): PostRequest {
   const pr = postRequest as PostRequest;
   pr
-      .entry[0]
-      .changes[0]
-      .value
-      .messages[0]
-      .id;
+    .entry[0]
+    .changes[0]
+    .value
+    .messages[0]
+    .id;
 
   return pr;
 }
@@ -119,8 +119,8 @@ function extractMessageString(messageObject: MessageObject) {
   let message: string;
   try {
     message = messageObject
-        .text
-        .body;
+      .text
+      .body;
   } catch (exception) {
     functions.logger.error("Unstructred message.", exception);
     message = "N/A";
@@ -196,11 +196,11 @@ function parseMessage(messageObject: MessageObject, user: User, messageRef: stri
  */
 function validateAndReturnUser(fbRequest: PostRequest): User {
   const number = fbRequest
-      .entry[0]
-      .changes[0]
-      .value
-      .messages[0]
-      .from;
+    .entry[0]
+    .changes[0]
+    .value
+    .messages[0]
+    .from;
 
   const user = UserStore.find((us) => us.phoneNumber == number);
 
@@ -239,13 +239,13 @@ async function messageActionHandler(actionItem: ActionItem): Promise<string> {
  * @param {ActionItem}actionItem
  * @return {Promise<string>}
  */
-async function findAndDeleteMessage(actionItem: ActionItem):Promise<string> {
+async function findAndDeleteMessage(actionItem: ActionItem): Promise<string> {
   const user = actionItem.message.user;
   const lastMessageRef = db.getLastMessageFromUser(user);
   const data = (await lastMessageRef).data() as TheSpend;
 
   functions.logger.info(`The Message from ${data.spender.name} pertaining to amount ${data.amount} is being deleted`);
-  db.deleteDocument((await lastMessageRef).ref );
+  db.deleteDocument((await lastMessageRef).ref);
   const a = `Deleted the following message -- ${JSON.stringify({
     amount: data.amount,
     description: data.description,
@@ -261,7 +261,7 @@ async function findAndDeleteMessage(actionItem: ActionItem):Promise<string> {
  * @param {ActionItem} actionItem
  * @return {String}
  */
-function persistMessage(actionItem:ActionItem):string {
+function persistMessage(actionItem: ActionItem): string {
   const parsedMessage = actionItem.message;
 
   if (parsedMessage.amount == undefined || parsedMessage.split == undefined ||
